@@ -1,0 +1,220 @@
+---
+title: "FPORTAFOLIO"
+format: pdf
+editor: visual
+---
+
+```{r}
+library(quantmod)
+library(fPortfolio)
+library(tidyverse)
+library(timeSeries)
+
+precios <- c("COST", "MA", "PG", "DIS", "SPOT")
+getSymbols(precios, from = "2019-01-02", periodicity = "daily")
+
+# Extraer y limpiar precios (sin NA ni ceros)
+precios_list <- list(
+  COST = na.omit(COST$COST.Close),
+  MA   = na.omit(MA$MA.Close),
+  PG   = na.omit(PG$PG.Close),
+  DIS  = na.omit(DIS$DIS.Close),
+  SPOT = na.omit(SPOT$SPOT.Close)
+)
+
+# Calcular retornos logarítmicos
+R.C <- diff(log(precios_list$COST)) * 100
+R.M <- diff(log(precios_list$MA)) * 100
+R.P <- diff(log(precios_list$PG)) * 100
+R.D <- diff(log(precios_list$DIS)) * 100
+R.S <- diff(log(precios_list$SPOT)) * 100
+
+# Alinear longitudes (por si difieren)
+retornos <- na.omit(merge(R.C, R.M, R.P, R.D, R.S))
+colnames(retornos) <- c("R.C", "R.M", "R.P", "R.D", "R.S")
+
+mu <- colMeans(retornos);mu
+Datos <- as.data.frame(retornos)
+S <- cov(Datos); S
+
+i <- matrix(1, 5, 1)
+Si <- solve(S) %*% i
+Su <- solve(S) %*% mu
+
+A <- as.numeric(t(i) %*% solve(S) %*% i); A
+B <- as.numeric(t(i) %*% solve(S) %*% mu);B
+C <- as.numeric(t(mu) %*% solve(S) %*% mu);C
+D <- A * C - B^2
+
+mu.bar <- 0.25
+W <- ((C - mu.bar * B) / D) * Si + ((mu.bar * A - B) / D) * Su; W
+
+# Riesgo del portafolio
+s.W <- sqrt(t(W) %*% S %*% W); s.W
+
+# Portafolio global mínimo
+w.g <- Si / A; w.g
+s.g <- 1 / sqrt(A); s.g
+mu.g <- t(w.g) %*% mu;mu.g
+
+# Portafolio tangente
+Rf <- 10 / 365
+E <- as.numeric(t(mu - Rf * i) %*% solve(S) %*% (mu - Rf * i));E
+sharpe <- sqrt(E); sharpe
+w.tg <- t(solve(S) %*% (mu - Rf * i)) / as.numeric(t(mu - Rf * i) %*% solve(S) %*% i); w.tg
+mu.tg <- w.tg %*% mu; mu.tg
+s.tg <- abs(mu.tg - Rf) / sharpe; s.tg 
+
+```
+
+```{r}
+x<-seq(0,7, length=100)
+y<-seq(0, 0.4, length=100)
+
+df <- expand.grid(x=x, y=y) %>% mutate(z = D * x^2 - A *y^2 + 2 * B * y - C)
+
+p<-ggplot(df, aes(x=x,y=y,z=z))+ 
+    geom_contour(bins=0, lwd=1, colour="blue4")+
+    labs(x=expression(sigma[p]),y=expression(mu[p]))+
+    ggtitle("Portafolios Óptimos")
+
+p+geom_point(aes(x=s.W, y=mu.bar), colour="green4", size = 2)+
+    geom_point(aes(x=s.g, y=mu.g), colour="red4", size = 2)+
+    geom_point(aes(x=s.tg, y=mu.tg), colour="yellow4", size = 2)+
+    geom_text(aes(s.W + 0.6, y = mu.bar - 0.01, label="0.25"), color="green4")+
+    geom_text(aes(x=s.g, y=mu.g, label="Min Global"), vjust=-1, hjust=-0.3, color="red4")+
+    geom_text(aes(x=s.tg+0.6, y=mu.tg, label="Portafolio tg"), color="yellow4")+
+    geom_segment(aes(x=0, xend=s.tg, y=Rf, yend=mu.tg), color="black", linewidth=1)
+```
+
+```{r}
+library(ggplot2)
+i<-matrix(c(1,1,1,1,1),5)
+mu <- rbind(mean(R.C[-1]), mean(R.M[-1]), mean(R.P[-1]), mean(R.D[-1]), mean(R.S[-1]));mu
+S <- cov(Datos); S
+P<- matrix(runif(9000, min=0, max=100), ncol=5)
+W=P/rowSums(P)
+```
+
+```{r}
+risk <- numeric(1800)
+mu.p <- numeric(1800)
+
+for(j in 1:1800){
+    risk[j] <- sqrt(t(W[j,]) %*% S %*% W[j,])
+    mu.p[j] <- sum(W[j,] * mu[,1])
+}
+
+datos <- data.frame(riesgo=risk, media=mu.p)
+
+ggplot(datos, aes(x=riesgo, y=media))+geom_point()+geom_point(aes(x=1.1, y=0.06), colour="red")
+```
+
+```{r}
+Datos <- as.timeSeries(Datos)
+Datos <- portfolioData(data=Datos, spec=portfolioSpec())
+getStatistics(Datos)
+```
+
+```{r}
+#Frontera eficiente
+frontera <- portfolioFrontier(Datos)
+
+frontierPlot(frontera, cex=1, pch=20, col=c("blue4", "gray"))
+```
+
+```{r}
+#montecarlo
+frontierPlot(frontera, cex = 1, pch = 20,
+
+col = c("blue4", "gray"))
+
+#SIMULACIÓN DE PORTAFOLIOS (Portafolios con diferentes pesos)
+monteCarloPoints(frontera, mcSteps = 1000,
+
+pch = 19, col = "gray82", cex = 0.2)
+#PORTAFOLIOS CON UN SOLO ACTIVO (1,0,0,0,0), (0,1,0,0,0) , (0,0,1,0,0) , (0,0,0,1,0) y (0,0,0,0,1)
+singleAssetPoints(frontera,
+
+col = "green4", pch = 19, cex = 1)
+#PORTAFOLIO CON PESOS IGUALES (1/5, 1/5, 1/5, 1/5, 1/5)
+equalWeightsPoints(frontera,
+
+cex = 1, col = "magenta", pch = 19)
+```
+
+```{r}
+#min global
+min.var <- efficientPortfolio(data = Datos, constraints = "LongOnly")
+
+min.var
+```
+
+```{r}
+weightsPie(min.var)
+```
+
+```{r}
+frontierPlot(frontera, cex=0.6, pch=19, col=c("blue4", "gray"))
+minvariancePoints(min.var, col="red4", pch=19, cex=1)
+```
+
+```{r}
+#portafolio con retrno esperado
+mu.bar <- 0.1 # con un mu.bar>0.1 se va todo a CERO
+esp.cartera <- portfolioSpec()
+setTargetReturn(esp.cartera) = mu.bar
+por.efi <- efficientPortfolio(data = Datos, esp.cartera,
+constraints = "LongOnly")
+
+por.efi
+```
+
+```{r}
+weightsPie(por.efi)
+```
+
+```{r}
+sigma<- as.numeric(getTargetRisk(por.efi)["Cov"])
+mu <- as.numeric(getTargetRisk(por.efi))[1]
+
+frontierPlot(frontera, cex=0.6, pch=19, col=c("blue4", "gray"))
+points(x=sigma, y=mu, pch=4, cex=1)
+
+```
+
+```{r}
+#portafolio tangente
+R.f <- 10 / 365
+tg.p <- portfolioSpec()
+setRiskFreeRate(tg.p) <- R.f
+
+tgPortafolio <- tangencyPortfolio(Datos, spec = tg.p,
+constraints = "LongOnly")
+
+#PUNTO PARA GRÁFICAR
+sigma <- as.numeric(getTargetRisk(tgPortafolio)["Cov"])
+mu <- as.numeric(getTargetReturn(tgPortafolio))[1]
+tgPortafolio
+```
+
+```{r}
+weightsPie(tgPortafolio)
+```
+
+```{r}
+frontierPlot(frontera, cex=0.6, pch=19, col=c("blue4", "gray"))
+points(x=sigma, y=mu, pch=4, cex=1)
+```
+
+```{r}
+mu.tan<- getTargetReturn(tgPortafolio)[1]
+s.tan<-getTargetRisk(tgPortafolio)[1]
+(mu.tan-R.f)/s.tan
+```
+
+```{r}
+frontierPlot(frontera, pch=19, cex=0.6, col=c("blue4", "green4"))
+tangencyLines(tgPortafolio, return="mu", col="red4")
+points(x=sigma, y=mu, pch=4, cex=1)
+```

@@ -1,0 +1,182 @@
+---
+title: "Markowitz"
+author: "Karla Ivonne Vilchis García"
+format: pdf
+editor: visual
+---
+
+```{r, message=FALSE}
+library(quantmod)
+library(ggplot2)
+library(ggfortify)
+library(tseries)
+
+precios<-c("AAPL", "MSFT", "NVDA", "AMZN", "META")
+
+getSymbols(precios, from="2019-01-02", periodicity ="daily")
+
+min_len <- min(
+  nrow(AAPL), nrow(MSFT), nrow(NVDA), nrow(AMZN), nrow(META)
+)
+
+aapl <- AAPL$AAPL.Close[1:min_len]
+msft <- MSFT$MSFT.Close[1:min_len]
+nvda <- NVDA$NVDA.Close[1:min_len]
+amzn <- AMZN$AMZN.Close[1:min_len]
+meta <- META$META.Close[1:min_len]
+
+# Graficamos solo una vez y luego agregamos líneas y leyenda
+plot(aapl, type = "l", col = "blue",
+     ylim = range(c(aapl, msft, nvda, amzn, meta)),
+     main = "Precios de Cierre", ylab = "Precio", xlab = "Tiempo")
+
+lines(msft, col = "red")
+lines(nvda, col = "green")
+lines(amzn, col = "orange")
+lines(meta, col = "purple")
+
+legend("topright",
+       legend = c("AAPL", "MSFT", "NVDA", "AMZN", "META"),
+       col = c("blue", "red", "green", "orange", "purple"),
+       lty = 1, lwd = 2)
+```
+
+#### Descomposición de los retornos porcentuales
+
+```{r}
+precio_cierre<- AAPL$AAPL.Close
+
+serie_de_tiempo<-ts(precio_cierre, frequency = 252) 
+
+descom<- decompose(serie_de_tiempo, type="multiplicative")
+
+autoplot(descom)
+
+R.AAPL<-diff(log(AAPL$AAPL.Close))*100
+
+plot(R.AAPL)
+
+serie_de_tiempo<- ts(R.AAPL, frequency = 252)
+
+descom<-decompose(serie_de_tiempo, type="multiplicative")
+
+autoplot(descom)
+```
+
+#### RETORNOS DE LOS ACTIVOS
+
+```{r}
+R.AAPL<-diff(log(AAPL$AAPL.Close))*100
+R.MSFT<-diff(log(MSFT$MSFT.Close))*100
+R.NVDA<-diff(log(NVDA$NVDA.Close))*100
+R.AMZN<-diff(log(AMZN$AMZN.Close))*100
+R.META<-diff(log(META$META.Close))*100
+```
+
+```{r}
+plot(R.AAPL)
+plot(R.MSFT)
+plot(R.NVDA)
+plot(R.AMZN)
+plot(R.META)
+```
+
+```{r}
+#VECTOR DE RETORNOS
+mu<-rbind(mean(R.AAPL[-1]), mean(R.MSFT[-1]), mean(R.NVDA[-1]), mean(R.AMZN[-1]) , mean(R.META[-1]))
+
+```
+
+```{r}
+#datos de cierre
+Dat<-data.frame(R.AAPL[-1], R.MSFT[-1], R.NVDA[-1], R.AMZN[-1], (R.META[-1]))
+#matriz de varianza covarianza
+s<-cov(Dat)
+#vector de unos
+i<-matrix(c(1,1,1,1,1), 5);i
+#inversa de s
+Sinv<-solve(s) %*% i; Sinv
+#calculos para el portafolio optimo
+Su<-solve(s) %*% mu; Su
+A<-c(t(i) %*% solve(s) %*% i);A
+B<-c(t(i) %*% Su);B
+C<-c(t(mu) %*% Su);C
+D<- A*C-B^2
+```
+
+#### Portafolios Óptimos
+
+```{r}
+library(tidyverse)
+x<-seq(0, 3.5, length=100)
+y<-seq(0,0.3, length=100)
+
+df<-expand.grid(x=x, y=y) %>%
+  mutate(z=D*x^2-A*y^2+2*B*y-C)
+#frontera eficiente
+p<-ggplot(df, aes(x=x, y=y, z=z))+
+    geom_contour(bins=0, lwd=1, colour="blue4")+
+    labs(x=expression(sigma[p]), y=expression(mu[p]))
+
+p+ggtitle("Portafolios óptimos")
+```
+
+#### Portafolio con retorno 0.05 y mínimo global
+
+```{r}
+mu.bar<-0.05
+
+W<-((C-mu.bar*B)/D)*Sinv+((mu.bar*A-B)/D)*Su; W
+```
+
+```{r}
+#Varianza
+a<-sqrt((mu.bar^2*A-2*mu.bar*B+C)/D); a
+
+#minimo global
+w.g<-Sinv/A; w.g
+
+#Riesgo mínimo
+s.g<-1/sqrt(A);s.g
+```
+
+```{r}
+mu.g<-t(w.g) %*% mu
+p+geom_point(aes(x=a, y=mu.bar), colour="gold2")+geom_point(aes(x=c(s.g), y=c(mu.g)), colour="red4")+ggtitle("PORTAFOLIOS OPTIMOS")
+```
+
+#### Portafolio con retorno 0.1 y mínimo global
+
+```{r}
+mu.bar<-0.1
+
+W<-((C-mu.bar*B)/D)*Sinv+((mu.bar*A-B)/D)*Su; W
+
+a<-sqrt((mu.bar^2*A-2*mu.bar*B+C)/D); a
+
+w.g<-Sinv/A; w.g
+
+s.g<-1/sqrt(A);s.g
+
+mu.g<-t(w.g) %*% mu
+
+p+geom_point(aes(x=a, y=mu.bar), colour="chartreuse1")+geom_point(aes(x=c(s.g), y=c(mu.g)), colour="red4")+ggtitle("PORTAFOLIOS OPTIMOS")
+```
+
+#### Portafolio con retorno 0.15 y mínimo global
+
+```{r}
+mu.bar<-0.15
+
+W<-((C-mu.bar*B)/D)*Sinv+((mu.bar*A-B)/D)*Su; W
+
+a<-sqrt((mu.bar^2*A-2*mu.bar*B+C)/D); a
+
+w.g<-Sinv/A; w.g
+
+s.g<-1/sqrt(A);s.g
+
+mu.g<-t(w.g) %*% mu
+
+p+geom_point(aes(x=a, y=mu.bar), colour="chartreuse1")+geom_point(aes(x=c(s.g), y=c(mu.g)), colour="red4")+ggtitle("PORTAFOLIOS OPTIMOS")
+```

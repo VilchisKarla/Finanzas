@@ -1,0 +1,563 @@
+---
+title: "1a_PFinal"
+author: "Karla Vilchis"
+format: pdf
+editor: visual
+---
+
+**Cliente:** Fernando Lascurain
+
+**Plan:** 1 año
+
+**Descrpción del cliente:** Fernando es un cliente de 32 años, nuevo NODO FINANCIERO, por eso es que se unió a un plan tan a corto plazo, para ello le ofreceremos 3 propuestas de portafolio (cada una con su portafolio de mínima varianza, portafolio dada un rendimiento determinado, portafolio tangente), utilizando el modelo CAPM para tener las acciones que nos dan mejores rendimientos respecto al mercado (S&P500) y de esta manera generar los siguientes 4 portafolios:
+
+1.  Portafolio de mínima varianza
+2.  Portafolio con retorno esperado del 15%
+3.  Portafolio tangente (P.tg)
+4.  Portafolio 50% Cetes y 50% P. tg (tomaremos el rendimiento de cetes a un año como 8.31%)
+
+Se proponen de esta manera para tener portafolios diversificados y de algún modo ofrecer algo más de seguridad y una variedad amplia para el cliente y que de esta manera Fernando, dado que no tiene mucha noción de inversiones, pueda tener oportunidad de escoger de acuerdo a las expecativas que tiene, dado que desea invertir sus ahorros de 3 años (\$30,000 = 1564.59 USD al día 22 de Junio de 2025), ya que se dio cuenta que en lugar de tenerlos guardados en su casa podría darle un ingreso extra sin mucho esfuerzo ya que desea tener un viaje a Europa el próximo año y desea pagar sus vuelos con este dinero, esperando un rendimiento encima del 20% durante este año que estrá con nosotros, considerando que no es amante al riesgo.
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+library(quantmod)
+library(ggplot2)
+library(dplyr)
+library(tseries)
+library(fPortfolio)
+library(dynlm)
+```
+
+### CAPM
+
+Estaremos proponiendo las siguientes acciones:
+
+**Sector Tecnológico**
+
+Google - **GOOG**
+
+Oracle Corporation - **ORCL**
+
+Jabil INC - **JBL**
+
+Neonode INC - **NEON**
+
+Dell technologies inc - **DELL**
+
+**Sector Financiero**
+
+American Express Company - **AXP**
+
+Wells Fargo & Company - **WFC**
+
+JPMorgan Chase &Co. - **JPM**
+
+Citigroup - **C**
+
+American International Group - **AIG**
+
+**Sector de Energías**
+
+Chevron Corporation - **CVX**
+
+The Williams Companies - **WMB**
+
+Marathon Petroleum Corporation - **MPC**
+
+EOG Resources - **EOG**
+
+Kinder Morgan - **KMI**
+
+**Criptomonedas**
+
+Bitcoin - **BTC-USD**
+
+Ethereum - **ETH-USD**
+
+BNB - **BNB-USD**
+
+Tether USDt - **USDT-USD**
+
+XRP - **XRP-USD**
+
+**Standard & Poor's 500 - \^GSPC**
+
+```{r, echo=FALSE}
+precios <- c("GOOG", "ORCL", "JBL", "NEON", "DELL", "AXP", "WFC", "JPM", "C", "AIG", "CVX", "WMB", "MPC", "EOG", "KMI", "^GSPC")
+getSymbols(precios, auto.assign =TRUE, from ="2019-01-02", periodicity ="daily")
+```
+
+```{r, echo=FALSE}
+preciosC <- c("BTC-USD", "ETH-USD", "BNB-USD", "USDT-USD", "XRP-USD")
+getSymbols(preciosC, from = "2019-01-02", periodicity ="daily", src="yahoo")
+```
+
+```{r, echo=FALSE}
+R.G <- diff(log(GOOG$GOOG.Close))*100
+R.ORCL <- diff(log(ORCL$ORCL.Close))*100
+R.JBL <- diff(log(JBL$JBL.Close))*100
+R.NEON <- diff(log(NEON$NEON.Close))*100
+R.DELL <- diff(log(DELL$DELL.Close))*100
+R.AXP <- diff(log(AXP$AXP.Close))*100
+R.WFC <- diff(log(WFC$WFC.Close))*100
+R.JPM <- diff(log(JPM$JPM.Close))*100
+R.C <- diff(log(C$C.Close))*100
+R.AIG <- diff(log(AIG$AIG.Close))*100
+R.CVX <- diff(log(CVX$CVX.Close))*100
+R.WMB <- diff(log(WMB$WMB.Close))*100
+R.MPC <- diff(log(MPC$MPC.Close))*100
+R.EOG <- diff(log(EOG$EOG.Close))*100
+R.KMI <- diff(log(KMI$KMI.Close))*100
+R.GSPC <- diff(log(GSPC$GSPC.Close))*100
+
+R.BTC <- diff(log(`BTC-USD`$`BTC-USD.Close`)) * 100
+R.ETH<- diff(log(`ETH-USD`$`ETH-USD.Close`))*100
+R.BNB <- diff(log(`BNB-USD`$`BNB-USD.Close`)) * 100
+R.USDT<- diff(log(`USDT-USD`$`USDT-USD.Close`))*100
+R.XRP<- diff(log(`XRP-USD`$`XRP-USD.Close`))*100
+```
+
+```{r, echo=FALSE}
+R.G <- na.omit(R.G)
+R.ORCL <- na.omit(R.ORCL)
+R.JBL <- na.omit(R.JBL)
+R.NEON <- na.omit(R.NEON)
+R.DELL <- na.omit(R.DELL)
+R.AXP <- na.omit(R.AXP)
+R.WFC <- na.omit(R.WFC)
+R.JPM <- na.omit(R.JPM)
+R.C <- na.omit(R.C)
+R.AIG <- na.omit(R.AIG)
+R.CVX <- na.omit(R.CVX)
+R.WMB <- na.omit(R.WMB)
+R.MPC <- na.omit(R.MPC)
+R.EOG <- na.omit(R.EOG)
+R.KMI <- na.omit(R.KMI)
+R.GSPC <- na.omit(R.GSPC)
+
+R.BTC <- na.omit(R.BTC)
+R.ETH<- na.omit(R.ETH)
+R.BNB <- na.omit(R.BNB)
+R.USDT<- na.omit(R.USDT)
+R.XRP<- na.omit(R.XRP)
+```
+
+```{r, echo=FALSE}
+R.G <- ts(R.G)
+R.ORCL <- ts(R.ORCL)
+R.JBL <- ts(R.JBL)
+R.NEON <- ts(R.NEON)
+R.DELL <- ts(R.DELL)
+R.AXP <- ts(R.AXP)
+R.WFC <- ts(R.WFC)
+R.JPM <- ts(R.JPM)
+R.C <- ts(R.C)
+R.AIG <- ts(R.AIG)
+R.CVX <- ts(R.CVX)
+R.WMB <- ts(R.WMB)
+R.MPC <- ts(R.MPC)
+R.EOG <- ts(R.EOG)
+R.KMI <- ts(R.KMI)
+R.GSPC <- ts(R.GSPC)
+
+R.BTC <- ts(R.BTC)
+R.ETH<- ts(R.ETH)
+R.BNB <- ts(R.BNB)
+R.USDT<- ts(R.USDT)
+R.XRP<- ts(R.XRP)
+```
+
+```{r, echo=FALSE}
+CAPM.G <- dynlm(R.G ~ R.GSPC);CAPM.G
+CAPM.ORCL <- dynlm(R.ORCL ~ R.GSPC);CAPM.ORCL
+CAPM.JBL <- dynlm(R.JBL ~ R.GSPC);CAPM.JBL
+CAPM.NEON <- dynlm(R.NEON ~ R.GSPC);CAPM.NEON
+CAPM.DELL <- dynlm(R.DELL ~ R.GSPC);CAPM.DELL
+CAPM.AXP <- dynlm(R.AXP ~ R.GSPC);CAPM.AXP
+CAPM.WFC <- dynlm(R.WFC ~ R.GSPC);CAPM.WFC
+CAPM.JPM <- dynlm(R.JPM ~ R.GSPC);CAPM.JPM
+CAPM.C <- dynlm(R.C ~ R.GSPC);CAPM.C
+CAPM.AIG <- dynlm(R.AIG ~ R.GSPC);CAPM.AIG
+CAPM.CVX <- dynlm(R.CVX ~ R.GSPC);CAPM.CVX
+CAPM.WMB <- dynlm(R.WMB ~ R.GSPC);CAPM.WMB
+CAPM.MPC <- dynlm(R.MPC ~ R.GSPC);CAPM.MPC
+CAPM.EOG <- dynlm(R.EOG ~ R.GSPC);CAPM.EOG
+CAPM.KMI <- dynlm(R.KMI ~ R.GSPC);CAPM.KMI
+
+CAPM.BTC <- dynlm(R.BTC ~ R.GSPC);CAPM.BTC
+CAPM.ETH <- dynlm(R.ETH ~ R.GSPC);CAPM.ETH
+CAPM.BNB <- dynlm(R.BNB ~ R.GSPC);CAPM.BNB
+CAPM.USDT <- dynlm(R.USDT ~ R.GSPC);CAPM.USDT 
+CAPM.XRP <- dynlm(R.XRP ~ R.GSPC);CAPM.XRP
+```
+
+De esta manera tenemos lo siguiente
+
++---------+---------+---------+------------------------------------------------------------------------+
+| ACTIVOS | ALPHA   | BETA    | INTERPETACIÓN                                                          |
++=========+=========+=========+========================================================================+
+| GOOG    | 0.01195 | 1.12144 | Como alpha es mayor que 0, el activo **superó** al mercado             |
+|         |         |         |                                                                        |
+|         |         |         | Como beta es mayor que 1 , el activo es **más volátil** que el mercado |
++---------+---------+---------+------------------------------------------------------------------------+
+| ORCL    | 0.03974 | 1.00053 | Como alpha es mayor que 0, el activo **superó** al mercado             |
+|         |         |         |                                                                        |
+|         |         |         | Como beta es mayor que 1 , el activo es **más volátil** que el mercado |
++---------+---------+---------+------------------------------------------------------------------------+
+| JBL     | 0.05872 | 1.34567 | Como alpha es mayor que 0, el activo **superó** al mercado             |
+|         |         |         |                                                                        |
+|         |         |         | Como beta es mayor que 1 , el activo es **más volátil** que el mercado |
++---------+---------+---------+------------------------------------------------------------------------+
+| NEON    | 0.08936 | 1.11435 | Como alpha es mayor que 0, el activo **superó** al mercado             |
+|         |         |         |                                                                        |
+|         |         |         | Como beta es mayor que 1 , el activo es **más volátil** que el mercado |
++---------+---------+---------+------------------------------------------------------------------------+
+| DELL    | 0.03242 | 1.24954 | Como alpha es mayor que 0, el activo **superó** al mercado             |
+|         |         |         |                                                                        |
+|         |         |         | Como beta es mayor que 1 , el activo es **más volátil** que el mercado |
++---------+---------+---------+------------------------------------------------------------------------+
+
+: ANÁLISIS CAPM TECNOLÓGICOS
+
++---------+----------+----------+--------------------------------------------------------------------------------------+
+| ACTIVOS | ALPHA    | BETA     | INTERPETACIÓN                                                                        |
++=========+==========+==========+======================================================================================+
+| AXP     | 0.001138 | 1.292668 | Como alpha es mayor que 0, el activo **superó** al mercado                           |
+|         |          |          |                                                                                      |
+|         |          |          | Como beta es mayor que 1 , el activo es **más volátil** que el mercado               |
++---------+----------+----------+--------------------------------------------------------------------------------------+
+| WFC     | -0.033   | 1.166    | Como alpha es menor que cero, el activo tuvo un **rendimiento inferior** al esperado |
+|         |          |          |                                                                                      |
+|         |          |          | Como beta es mayor que 1 , el activo es **más volátil** que el mercado               |
++---------+----------+----------+--------------------------------------------------------------------------------------+
+| JPM     | 0.00553  | 1.07224  | Como alpha es mayor que 0, el activo **superó** al mercado                           |
+|         |          |          |                                                                                      |
+|         |          |          | Como beta es mayor que 1 , el activo es **más volátil** que el mercado               |
++---------+----------+----------+--------------------------------------------------------------------------------------+
+| C       | -0.04662 | 1.31606  | Como alpha es menor que cero, el activo tuvo un **rendimiento inferior** al esperado |
+|         |          |          |                                                                                      |
+|         |          |          | Como beta es mayor que 1 , el activo es **más volátil** que el mercado               |
++---------+----------+----------+--------------------------------------------------------------------------------------+
+| AIG     | -0.01573 | 1.17822  | Como alpha es menor que cero, el activo tuvo un **rendimiento inferior** al esperado |
+|         |          |          |                                                                                      |
+|         |          |          | Como beta es mayor que 1 , el activo es **más volátil** que el mercado               |
++---------+----------+----------+--------------------------------------------------------------------------------------+
+
+: ANÁLISIS CAPM FINANCIERO
+
++---------+-----------+----------+--------------------------------------------------------------------------------------+
+| ACTIVOS | ALPHA     | BETA     | INTERPETACIÓN                                                                        |
++=========+===========+==========+======================================================================================+
+| CVX     | -0.03273  | 0.96144  | Como alpha es menor que cero, el activo tuvo un **rendimiento inferior** al esperado |
+|         |           |          |                                                                                      |
+|         |           |          | Como beta es menor que 1, el activo es **menos volátil** que el mrcado               |
++---------+-----------+----------+--------------------------------------------------------------------------------------+
+| WMB     | 0.01245   | 0.91244  | Como alpha es mayor que 0, el activo **superó** al mercado                           |
+|         |           |          |                                                                                      |
+|         |           |          | Como beta es menor que 1, el activo es **menos volátil** que el mrcado               |
++---------+-----------+----------+--------------------------------------------------------------------------------------+
+| MPC     | -0.002287 | 1.246352 | Como alpha es menor que cero, el activo tuvo un **rendimiento inferior** al esperado |
+|         |           |          |                                                                                      |
+|         |           |          | Como beta es mayor que 1 , el activo es **más volátil** que el mercado               |
++---------+-----------+----------+--------------------------------------------------------------------------------------+
+| EOG     | -0.03587  | 1.04746  | Como alpha es menor que cero, el activo tuvo un **rendimiento inferior** al esperado |
+|         |           |          |                                                                                      |
+|         |           |          | Como beta es mayor que 1 , el activo es **más volátil** que el mercado               |
++---------+-----------+----------+--------------------------------------------------------------------------------------+
+| KMI     | -0.01137  | 0.87432  | Como alpha es menor que cero, el activo tuvo un **rendimiento inferior** al esperado |
+|         |           |          |                                                                                      |
+|         |           |          | Como beta es menor que 1, el activo es **menos volátil** que el mrcado               |
++---------+-----------+----------+--------------------------------------------------------------------------------------+
+
+: ANÁLISIS CAPM ENERGÍAS
+
++---------+-----------+-----------+--------------------------------------------------------------------------------------+
+| ACTIVOS | ALPHA     | BETA      | INTERPETACIÓN                                                                        |
++=========+===========+===========+======================================================================================+
+| BTC     | 0.1130    | 0.0379    | Como alpha es mayor que 0, el activo **superó** al mercado                           |
+|         |           |           |                                                                                      |
+|         |           |           | Como beta es menor que 1, el activo es **menos volátil** que el mrcado               |
++---------+-----------+-----------+--------------------------------------------------------------------------------------+
+| ETH     | 0.1374    | 0.1627    | Como alpha es mayor que 0, el activo **superó** al mercado                           |
+|         |           |           |                                                                                      |
+|         |           |           | Como beta es menor que 1, el activo es **menos volátil** que el mrcado               |
++---------+-----------+-----------+--------------------------------------------------------------------------------------+
+| BNB     | 0.22334   | 0.01502   | Como alpha es mayor que 0, el activo **superó** al mercado                           |
+|         |           |           |                                                                                      |
+|         |           |           | Como beta es menor que 1, el activo es **menos volátil** que el mrcado               |
++---------+-----------+-----------+--------------------------------------------------------------------------------------+
+| USDT    | -0.001411 | -0.001875 | Como alpha es menor que cero, el activo tuvo un **rendimiento inferior** al esperado |
+|         |           |           |                                                                                      |
+|         |           |           | Como beta es menor que 0, se tiene una **relación inversa** con el mercado           |
++---------+-----------+-----------+--------------------------------------------------------------------------------------+
+| XRP     | 0.01207   | 0.05818   | Como alpha es mayor que 0, el activo **superó** al mercado                           |
+|         |           |           |                                                                                      |
+|         |           |           | Como beta es menor que 1, el activo es **menos volátil** que el mercado              |
++---------+-----------+-----------+--------------------------------------------------------------------------------------+
+
+: ANÁLISIS CAPM CRIPTOMONEDAS
+
+Aquí obtendremos el RRB "rendimiento relativo al riesgo" es una medida que evalúa el desempeño de una inversión en relación con el nivel de riesgo asumido para obtener ese rendimiento. Su objetivo es comparar si el retorno obtenido justifica el riesgo tomado, lo que nos permite tomar decisiones más informadas.
+
+```{r, echo=FALSE}
+accionesT <- c("GOOG", "ORCL", "JBL", "NEON", "DELL")
+accionesF <- c("AXP", "WFC", "JPM", "C", "AIG")
+accionesE <- c("CVX", "WMB", "MPC", "EOG", "KMI")
+accionesC <- c("BTC-USD", "ETH-USD", "BNB-USD", "USDT-USD", "XRP-USD")
+#DEFINIMOS LOA VALORES DE ALPHA Y BETA EN UN VECTOR PARA OBTENER EL RATIO DE RIESGO BENEFICIO
+alphaT <- c(0.01195, 0.03974, 0.05872, 0.08936, 0.03242)
+betaT<-c(1.12144, 1.00053, 1.34567, 1.11435, 1.24954)
+
+alphaF <- c(0.001138, -0.033, 0.00553, -0.04662, -0.01573)
+betaF <-c(1.292668, 1.166, 1.07224, 1.31606, 1.17822)
+
+alphaE <- c(-0.03273, 0.01245, -0.002287, -0.03587, -0.01137)
+betaE <-c(0.96144, 0.91244, 1.246352, 1.04746, 0.87432)
+
+alphaC <- c(0.1130,0.1374,0.22334,-0.001411, 0.01207)
+betaC <-c(0.0379, 0.1627, 0.01502, -0.001875, 0.05818)
+
+RRB.T <- abs(alphaT/betaT)
+RRB.F <- abs(alphaF/betaF)
+RRB.E <- abs(alphaE/betaE)
+RRB.C <- abs(alphaC/betaC)
+
+
+resultadosT<- data.frame(Accion = accionesT, RRB = RRB.T)
+resultadosF<- data.frame(Accion = accionesF, RRB = RRB.F)
+resultadosE<- data.frame(Accion = accionesE, RRB = RRB.E)
+resultadosC<- data.frame(Accion = accionesC, RRB = RRB.C)
+
+result_ordenT <- resultadosT[order(-resultadosT$RRB), ];result_ordenT
+```
+
+```{r, echo=FALSE}
+result_ordenF <- resultadosF[order(-resultadosF$RRB), ];result_ordenF
+```
+
+```{r, echo=FALSE}
+result_ordenE <- resultadosE[order(-resultadosE$RRB), ];result_ordenE
+```
+
+```{r, echo=FALSE}
+result_ordenC <- resultadosC[order(-resultadosC$RRB), ];result_ordenC
+```
+
+Cómo podemos ver, los 2 activos con mayor RRB para el sector tecnológico son NEON y JBL, del sector financiero son CITIGROUP y WFC, del sector de energías son EOG y CVX y las mejores criptomonedas son BNB y BTC.
+
+Ahora podemos hacer el análisis de los siguientes portafolios para nuestro cliente, con las acciones anteriores (NEON, JBL, C, WFC, EOG, CVX, BNB, BTC):
+
+-   Portafolio de mínima varianza
+
+-   Portafolio con retorno esperado del 20%
+
+-   Portafolio tangente (P.tg)
+
+-   Portafolio 50% Cetes y 50% P. tg
+
+A continuación comenzaremos con la teoría de Markowitz para poder presentar las opciones al cliente.
+
+```{r, echo=FALSE}
+#Igualamos las longitudes de todos los datos de los activos
+length(R.NEON)
+length(R.JBL)
+length(R.C)
+length(R.WFC)
+length(R.EOG)
+length(R.CVX)
+length(R.BNB)
+length(R.BTC)
+
+#IGUALAR LONGITUDES
+dif_lon<- length(R.BNB)-length(R.NEON)
+R.BNB<-R.BNB[-(1:dif_lon),]
+R.BTC<-R.BTC[-(1:dif_lon),]
+cat("\n")
+#CHECAR LONGITUDES
+length(R.BNB)
+length(R.BTC)
+```
+
+```{r, echo=FALSE}
+#obtenemos sus medias
+mu <- rbind(mean(R.NEON[-1]), mean(R.JBL[-1]), mean(R.C[-1]), mean(R.WFC[-1]), mean(R.EOG[-1]), mean(R.CVX[-1]), mean(R.BNB[-1]), mean(R.BTC[-1]))
+#creamos un vector con los retornos del portafolio
+retornos <- cbind(R.NEON, R.JBL, R.C, R.WFC, R.EOG, R.CVX, R.BNB, R.BTC)
+retornos <- na.omit(retornos)
+colnames(retornos) <- c("NEON", "JBL", "C", "WFC", "EOG", "CVX", "BNB", "BTC")
+Datos <- as.data.frame(retornos)
+#calculamos la matriz de varianza covarianza
+S <- cov(Datos)
+i<-matrix(c(1,1,1,1,1,1,1,1), 8)
+Si<-solve(S) %*% i
+Su<-solve(S) %*% mu
+
+A <- as.numeric(t(i) %*% solve(S) %*% i)
+B <- as.numeric(t(i) %*% solve(S) %*% mu)
+C <- as.numeric(t(mu) %*% solve(S) %*% mu)
+D <- A * C - B^2
+```
+
+Obtendremos el portafolio con un rendimiento esperado del 10%, que fue uno de los portafolios que le propusimos al señor Lascurain.
+
+```{r, echo=FALSE}
+mu.bar <- 0.15
+"Pesos del portafolio con un rendimiento del 20%"
+W <- ((C - mu.bar * B) / D) * Si + ((mu.bar * A - B) / D) * Su; W
+"Riesgo del portafolio"
+# Riesgo del portafolio
+s.W <- sqrt(t(W) %*% S %*% W); s.W
+```
+
+El siguiente portafolio es el que nos da el **mínimo riesgo** de los portafolios eficientes, este portafolio es el más seguro.
+
+```{r, echo=FALSE}
+# Portafolio global mínimo
+"Pesos para el portafolio de mínima varianza"
+w.g <- Si / A; w.g
+"Riesgo del portafolio de mínima varianza"
+s.g <- 1 / sqrt(A); s.g
+"Retornos del portafolio de mínima varianza"
+mu.g <- as.numeric(t(w.g) %*% mu);mu.g
+```
+
+Como vimos, el riesgo es de 1.592474 y el retorno esperado es del 5.57%, menor que el de CETES.
+
+```{r, echo=FALSE}
+# Portafolio tangente
+Rf <- 10 / 252 #la bolsa de valores abre 252 días y las criptomonedas se ajustaron a estos datos
+E <- as.numeric(t(mu - Rf * i) %*% solve(S) %*% (mu - Rf * i));E
+sharpe <- sqrt(E); sharpe
+"Pesos del p.tg"
+w.tg <- t(solve(S) %*% (mu - Rf * i)) / as.numeric(t(mu - Rf * i) %*% solve(S) %*% i); w.tg
+"Retorno esperado del p.tg"
+mu.tg <- w.tg %*% mu; mu.tg
+"riesgo del p.tg"
+s.tg <- abs(mu.tg - Rf) / sharpe; s.tg
+```
+
+El portafolio anterior presenta un poco más de riesgo, pero es el que nos da un mayor retorno, teniendo un 73.62% de rendimiento con un riesgo de 10.47942
+
+Graficamente podemos visualizar los portafolios que te proponemos en la siguiente gráfica, siendo la línea azul donde se encuentran los portafolios óptimos, que ahí podemos encontrar los y portafolios propuestos.
+
+```{r, }
+x<-seq(0,13,length=100)
+y<-seq(-0,1,length=100)
+df<-expand.grid(x=x,y=y) %>% mutate(z=D*x^2-A*y^2+2*B*y-C)
+p <- ggplot(df, aes(x = x, y = y, z = z)) +
+  geom_contour(breaks = 0, lwd = 1, colour = "blue4") +
+  labs(x = expression(sigma[p]), y = expression(mu[p])) +
+  
+  # Portafolio 40%
+  geom_point(aes(x = s.W, y = mu.bar), colour = "cadetblue4", size = 5, shape = 19) +
+  geom_text(aes(x = s.W, y = mu.bar, label = "Portafolio 15%"), 
+            colour = "cadetblue4", hjust = -0.1, vjust = -0.5, size = 3) +
+  
+  # Portafolio Tangente
+  geom_point(aes(x = s.tg, y = mu.tg), colour = "darkorchid2", size = 5, shape = 19) +
+  geom_text(aes(x = s.tg, y = mu.tg, label = "Tangente"), 
+            colour = "darkorchid2", hjust = -0.1, vjust = -0.5, size = 3) +
+  
+  # Mínimo Global
+  geom_point(aes(x = s.g, y = mu.g), colour = "hotpink2", size = 5, shape = 19) +
+  geom_text(aes(x = s.g, y = mu.g, label = "Mínimo Global"), 
+            colour = "hotpink2", hjust = -0.2, vjust = -0.5, size = 3) +
+  
+  # CETES
+  geom_point(aes(x = 0, y = 0.0831), colour = "maroon2", size = 5, shape = 19) +
+  geom_text(aes(x = -0.5, y = 0.0831, label = "CETES"), 
+            colour = "maroon2", hjust = -0.1, vjust = -0.6, size = 3) +
+  
+  # Portafolio 50%-50%
+  geom_point(aes(x = 5.23971, y = 0.40966795), colour = "red", size = 5, shape = 19) +
+  geom_text(aes(x = 5.23971, y = 0.40966795, label = "50%-50%"), 
+            colour = "red", hjust = -0.1, vjust = -0.5, size = 3) +
+  
+  ggtitle("Portafolios óptimos")
+
+p
+```
+
+A continuación te dejamos una tabla con los datos de los portafolios que te proponemos para podeer analizar mejor los datos que tenemos.
+
+| Portafolio          | Rendimiento | Riesgo   |
+|---------------------|-------------|----------|
+| CETES               | 8.31%       | 0        |
+| MÍNIMA VARIANZA     | 5.57%       | 1.592474 |
+| 15%                 | 15%         | 2.143208 |
+| P.tg                | 73.62%      | 10.47942 |
+| 50% cetes - 50%P.tg | 40.96%      | 5.23971  |
+
+: Portafolios Propuestos
+
+Para calcular el rendimiento anualizado (R.A) de los portafolios ocuparemos la siguiente expresión.
+
+(1 + \mu)\^{252} − 1
+
+(1 + \mu)\^{252} − 1
+
+```{r, echo=FALSE}
+"R.A min. glob"
+(1+0.0005576768)**252 -1
+#Riesgo
+(1.592474) * sqrt(252)
+"R.A 15%"
+(1+0.0015)**252 -1
+#Riesgo
+(2.143208) * sqrt(252)
+"R.A P.tg"
+(1+0.007362359)**252 -1
+#Riesgo
+(10.47942) * sqrt(252)
+"R.A 50%-50%"
+(1+0.0040966795)**252 -1
+#Riesgo
+(5.23971) * sqrt(252)
+```
+
+| Portafolio      | Riesgo  | Retorno anualizado | Ganancia  |
+|-----------------|---------|--------------------|-----------|
+| CETES           | 0%      | 8.31%              | \$2493    |
+| MÍNIMA VARIANZA | 25.27%  | 15.08%             | \$4524    |
+| 15%             | 34.02%  | 45.89%             | \$13,767  |
+| P.tg            | 166.35% | 535.04%            | \$160,500 |
+| 50% - 50%       | 83.17%  | 180.17%            | \$54,000  |
+
+: Retornos anualizados
+
+Tomando en cuenta estos retornos, la decisión dependera del riesgo que quiera correr el señor Lascurain, pero considerando que no es amante al riesgo, le proponemos irse por el **portafolio del 15%**, ya que le dará un rendimiento mayor al de cetes y no correrá un riesgo tan alto como con el portafolio tangente, además tengamos en cuenta que nosotros por el tipo de plan en el que esta, le estaremos cobrando el 0.5% de comisión, esperando tener al final del año \$43,078.65, de esta manera tendrá lo necesario para poder realizar la compra de los vuelos que desea, así que el portafolio quedara de la siguiente manera:
+
+| Activos | Pesos       |
+|---------|-------------|
+| NEON    | 0.08137499  |
+| JBL     | 0.72785295  |
+| C       | -0.34818481 |
+| WFC     | 0.15614746  |
+| EOG     | -0.01106658 |
+| CVX     | 0.11600489  |
+| BNB     | 0.24340536  |
+| BTC     | 0.03446574  |
+
+: Pesos del portafolio 15%
+
+¿Por qué el portafolio del señor Lascurain nos da pesos negativos para algunos activos?
+
+Esto se debe a que existen ventas en corto, que dada la diversificación eficiente JBL tiene una ponderación alta o alta correlación negativa con otros activos (ej: cobertura con C en corto) y las ventas en corto de C y EOG se utilizan como estrategias para aprovechar activos sobrevalorados o con bajo rendimiento esperado.
+
+Así, este portafolio está repartido de esta manera porque, según el modelo de Markowitz (que busca equilibrar ganancias y riesgos), **JBL** es la estrella: tiene buen rendimiento sin demasiado riesgo, por eso le toca la mayor parte (72.8%).
+
+Las inversiones negativas en **C** (-34.8%) y **EOG** (-1.1%) son como "apuestas en contra" de esas acciones: si bajan, ganamos dinero (eso ayuda a compensar posibles pérdidas de otras).
+
+El resto (**NEON, WFC, CVX, BNB, BTC**) están ahí para diversificar: no poner todos los huevos en la misma canasta. Por ejemplo:
+
+-   **BNB** (24.3%) y **BTC** (3.5%) son criptomonedas, que suelen moverse distinto a las acciones tradicionales (así el portafolio no cae todo a la vez).
+
+-   **WFC** (15.6%) y **CVX** (11.6%) son empresas más estables que ayudan a suavizar los altibajos.
+
+**¿Por qué no repartir todo igual?**\
+Porque no todas las inversiones aportan lo mismo. Algunas dan más ganancia con poco riesgo (como JBL), otras sirven para proteger (como las apuestas en corto), y otras equilibran el conjunto. La idea es **ganar lo máximo posible, pero durmiendo tranquilo**.
+
+Eso sí, hay que vigilar:
+
+-   Si **JBL** tiene un mal día, el portafolio sufre mucho (porque es la mayoría).
+
+-   Las criptos (**BNB, BTC**) son volátiles, pero como no son tanto %, no deberían desbalancearlo todo
