@@ -1,0 +1,250 @@
+---
+title: "EJERCICIO_CAPM"
+author: "Vilchis García Karla Ivonne"
+format: pdf
+editor: visual
+---
+
+## Ejercicio
+
+De los siguiente activos, determinar la prima de riesgo, el valor de α y β e interpretarlos.
+
+-   NVDA
+
+-   TSLA
+
+-   INTC
+
+-   GOOG
+
+-   MSFT
+
+Utiliza la base de datos CAPM.R para usar las letra del tesoro Treasury Bill, TB.
+
+```{r, warning=FALSE, message=FALSE}
+library(ggplot2)
+library(quantmod)
+```
+
+```{r}
+precios <- c("NVDA", "TSLA", "INTC", "GOOG", "MSFT")
+getSymbols (precios, from = "2018-01-01", to="2024-04-01",periodicity="monthly")
+```
+
+```{r}
+r.nv<-na.omit(diff(log(NVDA$NVDA.Close))*100)
+r.ts<-na.omit(diff(log(TSLA$TSLA.Close))*100)
+r.in<-na.omit(diff(log(INTC$INTC.Close))*100)
+r.go<-na.omit(diff(log(GOOG$GOOG.Close))*100)
+r.ms<-na.omit(diff(log(MSFT$MSFT.Close))*100)
+```
+
+```{r}
+#ACTIVO LIBRE DE RIESGO
+load("C:/Users/BLANCA/Downloads/CAPM.RData")
+r.tb <- CAPM$TB[2:75]
+r.sp <- (diff(log(CAPM$SP))) * 100
+```
+
+#### CÁLCULOS DE NVDA
+
+```{r}
+beta_n <- cov(r.nv, r.sp)/var(r.sp)
+E_Ri_n<-mean(r.tb)+beta_n*(mean(r.sp-r.tb))
+#Prima de riesgo
+cat("La prima de riesgo mensual que nos debería dar NVDA para invertir en ellos es", E_Ri_n)
+```
+
+```{r}
+z.nvda <- r.nv -r.tb
+z.sp <- r.sp - r.tb
+p <- ggplot(data.frame(z.nvda, z.sp),
+aes(x = z.sp, y = z.nvda)) +
+geom_point(cex = 2, colour = "blue4") +
+labs(title = "CAPM", x = expression(R[m]),
+y = expression(R[nvda]))
+p
+```
+
+```{r}
+ols_n <- lm(z.nvda ~ z.sp)
+summary(ols_n)
+```
+
+```{r}
+p + geom_abline(intercept = ols_n$coef[1], slope = ols_n$coef[2],
+                colour = "blue4", lwd = 1)
+```
+
+```{r}
+#interpretación de alpa y beta
+cat("El retorno mensual excedente de NVDA, 
+    con respecto al calculado es", ols_n$coef[1],
+    "% con un riesgo de",ols_n$coef[2], "\n")
+
+cat("Veamos que el valor de beta es", ols_n$coef[2], 
+    "Como es mayor que 1, entonces tenemos que NVDA es 
+    más volátil que el mercado.\nAhora alpha es", ols_n$coef[1], 
+    "también mayor a 0, por lo que NVDA superó al mercado.")
+```
+
+#### CÁLCULOS DE TSLA
+
+```{r}
+beta_t <- cov(r.ts, r.sp)/var(r.sp)
+E_Ri_t<-mean(r.tb)+beta_t*(mean(r.sp-r.tb))
+#Prima de riesgo
+cat("La prima de riesgo mensual que nos debería dar TSLA para invertir en ellos es", E_Ri_t)
+```
+
+```{r}
+z.tsla <- r.ts -r.tb
+z.sp <- r.sp - r.tb
+p <- ggplot(data.frame(z.tsla, z.sp),
+aes(x = z.sp, y = z.tsla)) +
+geom_point(cex = 2, colour = "turquoise") +
+labs(title = "CAPM", x = expression(R[m]),
+y = expression(R[tsla]))
+p
+```
+
+```{r}
+ols_t <- lm(z.tsla ~ z.sp)
+summary(ols_t)
+```
+
+```{r}
+p + geom_abline(intercept = ols_t$coef[1], slope = ols_t$coef[2],
+                colour = "turquoise4", lwd = 1)
+```
+
+```{r}
+#interpretación de alpa y beta
+cat("El retorno mensual excedente de TSLA, 
+    con respecto al calculado es", ols_t$coef[1],"% 
+    con un riesgo de",ols_t$coef[2], "\n\n")
+
+cat("Veamos que el valor de beta es", ols_t$coef[2], 
+    "Como es mayor que 1, entonces tenemos que TSLA es 
+    más volátil que el mercado.\nAhora alpha es", ols_t$coef[1], 
+    "también mayor a 0, por lo que TSLA superó al mercado.")
+```
+
+#### CÁLCULOS DE INTC
+
+```{r}
+beta_i <- cov(r.in, r.sp)/var(r.sp)
+E_Ri_i<-mean(r.tb)+beta_i*(mean(r.sp-r.tb))
+#Prima de riesgo
+cat("La prima de riesgo mensual que nos debería dar INTC para invertir en ellos es", E_Ri_i)
+```
+
+```{r}
+z.intc <- r.in -r.tb
+z.sp <- r.sp - r.tb
+p <- ggplot(data.frame(z.intc, z.sp),
+aes(x = z.sp, y = z.intc)) +
+geom_point(cex = 2, colour = "purple") +
+labs(title = "CAPM", x = expression(R[m]),
+y = expression(R[intc]))
+p
+```
+
+```{r}
+ols_i <- lm(z.intc ~ z.sp)
+summary(ols_i)
+```
+
+```{r}
+p + geom_abline(intercept = ols_i$coef[1], slope = ols_i$coef[2],
+                colour = "purple4", lwd = 1)
+```
+
+```{r}
+cat("El retorno mensual excedente de INTC, 
+    con respecto al calculado es", ols_i$coef[1],"% 
+    con un riesgo de",ols_i$coef[2], "\n\n")
+
+cat("Veamos que el valor de beta es", ols_i$coef[2], 
+    "Como es menor que 1, entonces tenemos que INTC el 
+    activo es menos volátil que el mercado.\nAhora alpha es", ols_i$coef[1],
+    "también es menor a 0, por lo que INTC tuvo un desempeño inferior al esperado.")
+```
+
+#### CÁLCULOS DE GOOG
+
+```{r}
+beta_g <- cov(r.go, r.sp)/var(r.sp) 
+E_Ri_g<-mean(r.tb)+beta_g*(mean(r.sp-r.tb)) 
+#Prima de riesgo 
+cat("La prima de riesgo mensual que nos debería dar GOOGLE para invertir en ellos es", E_Ri_g)
+```
+
+```{r}
+z.goog <- r.go -r.tb 
+z.sp <- r.sp - r.tb 
+p <- ggplot(data.frame(z.goog, z.sp), aes(x = z.sp, y = z.goog)) + 
+    geom_point(cex = 2, colour = "red") + 
+    labs(title = "CAPM", x = expression(R[m]), y = expression(R[goog])) 
+p
+```
+
+```{r}
+ols_g <- lm(z.goog ~ z.sp) 
+summary(ols_g)
+```
+
+```{r}
+p + geom_abline(intercept = ols_g$coef[1], slope = ols_g$coef[2],                
+                colour = "red4", lwd = 1)
+```
+
+```{r}
+cat("El retorno mensual excedente de GOOGLE, 
+    con respecto al calculado es", ols_g$coef[1],"% 
+    con un riesgo de",ols_g$coef[2], "\n\n")  
+
+cat("Veamos que el valor de beta es", ols_g$coef[2], 
+    "Como es mayor que 1, entonces tenemos que GOOGLE 
+    es más volátil que el mercado.\nAhora alpha es", ols_g$coef[1], 
+    "es mayor a 0, por lo que GOOGLE superó al mercado.")
+```
+
+#### CÁLCULOS DE MSFT
+
+```{r}
+beta_m <- cov(r.ms, r.sp)/var(r.sp) 
+E_Ri_m<-mean(r.tb)+beta_m*(mean(r.sp-r.tb)) 
+#Prima de riesgo 
+cat("La prima de riesgo mensual que nos debería dar MICROSOFT para invertir en ellos es", E_Ri_m)
+```
+
+```{r}
+z.msft <- r.ms -r.tb 
+z.sp <- r.sp - r.tb 
+p <- ggplot(data.frame(z.msft, z.sp), aes(x = z.sp, y = z.msft)) + 
+    geom_point(cex = 2, colour = "orange") + 
+    labs(title = "CAPM", x = expression(R[m]), y = expression(R[msft])) 
+p
+```
+
+```{r}
+ols_m <- lm(z.msft ~ z.sp) 
+summary(ols_m)
+```
+
+```{r}
+p + geom_abline(intercept = ols_m$coef[1], slope = ols_m$coef[2],                
+                colour = "orange4", lwd = 1)
+```
+
+```{r}
+cat("El retorno mensual excedente de MICROSOFT, 
+    con respecto al calculado es", ols_m$coef[1],"% 
+    con un riesgo de",ols_m$coef[2], "\n\n")  
+
+cat("Veamos que el valor de beta es", ols_m$coef[2], 
+    "Como es menor que 1, entonces tenemos que MICROSOFT es 
+    menos volátil.\nAhora alpha es", ols_m$coef[1], "es mayor 
+    a 0, por lo que MICROSOFT superó al mercado.")
+```
